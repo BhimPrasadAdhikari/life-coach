@@ -181,8 +181,6 @@ python-engineio==4.12.3
 python-json-logger==3.3.0
 python-multipart==0.0.20
 python-socketio==5.15.0
-pywin32==311
-pywinpty==2.0.15
 PyYAML==6.0.2
 pyzmq==27.0.0
 referencing==0.36.2
