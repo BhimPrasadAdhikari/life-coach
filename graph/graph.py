@@ -13,7 +13,5 @@ def create_graph():
     graph_builder.add_edge("conversation_node", "memory_saving_node")
     graph_builder.add_edge("memory_saving_node", END)   
 
-    return graph_builder 
-
-graph = create_graph().compile() 
+    return graph_builder
 
