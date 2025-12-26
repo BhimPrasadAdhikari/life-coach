@@ -26,7 +26,7 @@ class Memory:
 class VectorStore:
     """ A class to handle vector storage operations using Qdrant""" 
     _initialized: bool = False 
-    collection_name: str = "agent_store"
+    collection_name: str = "lifecoach_memory"
     similarity_threshold: float = 0.9 
     def __init__(self):
         if not self._initialized:
