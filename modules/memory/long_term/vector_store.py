@@ -79,9 +79,13 @@ class VectorStore:
         if similar_memory and similar_memory.id:
             metadata["id"] = similar_memory.id 
         
+        # Generate UUID if no ID provided (Qdrant requires unsigned int or UUID)
+        import uuid
+        point_id = metadata.get("id") or str(uuid.uuid4())
+        
         embedding = self.model.encode(text).tolist()
         point = PointStruct(
-            id=metadata.get("id", hash(text)),
+            id=point_id,
             vector=embedding,
             payload={
                 "text": text,
@@ -103,7 +107,6 @@ class VectorStore:
         response = self.client.query_points(
             collection_name=self.collection_name,
             query=query_embedding,
-            using="default",
             limit=k,
         )
 

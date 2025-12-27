@@ -31,7 +31,7 @@ class MemoryManager:
         self.vector_store = get_vector_store()
         self.logger = logging.getLogger(__name__)
         self.llm = ChatGroq(
-            model="",
+            model="llama-3.1-8b-instant",
             api_key=os.getenv("GROQ_API_KEY"),
             temperature=0.1,
             max_retries=2,
