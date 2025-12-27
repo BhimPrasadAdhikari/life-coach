@@ -257,3 +257,4 @@ elevenlabs==2.27.0
 
 
 Pillow
+huggingface_hub
