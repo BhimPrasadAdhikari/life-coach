@@ -1,14 +1,19 @@
-# Welcome to Chainlit! 🚀🤖
+# Welcome to Coach Aria
 
-Hi there, Developer! 👋 We're excited to have you on board. Chainlit is a powerful tool designed to help you prototype, debug and share applications built on top of LLMs.
+Hello, I'm **Aria** — your dedicated life coach for personal growth and transformation.
 
-## Useful Links 🔗
+I'm here to support you with:
 
-- **Documentation:** Get started with our comprehensive [Chainlit Documentation](https://docs.chainlit.io) 📚
-- **Discord Community:** Join our friendly [Chainlit Discord](https://discord.gg/k73SQ3FyUh) to ask questions, share your projects, and connect with other developers! 💬
+- **Goal setting** — Define meaningful objectives and create actionable plans
+- **Overcoming challenges** — Develop a growth mindset and move past obstacles
+- **Gaining clarity** — Understand what matters most to you
+- **Building confidence** — Unlock your potential and trust in your abilities
+- **Finding balance** — Navigate the different areas of your life with intention
 
-We can't wait to see what you create with Chainlit! Happy coding! 💻😊
+---
 
-## Welcome screen
+Share what's on your mind. Whether you're facing a challenge, working toward a goal, or simply need a space to think things through — I'm here to listen and guide.
 
-To modify the welcome screen, edit the `chainlit.md` file at the root of your project. If you do not want a welcome screen, just leave this file empty.
+*"The goal is not perfection. The goal is progress."*
+
+**What would you like to explore today?**

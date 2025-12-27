@@ -1,0 +1,146 @@
+[project]
+# List of environment variables to be provided by each user to use the app.
+user_env = []
+
+# Duration (in seconds) during which the session is saved when the connection is lost
+session_timeout = 3600
+
+# Duration (in seconds) of the user session expiry
+user_session_timeout = 1296000  # 15 days
+
+# Enable third parties caching (e.g., LangChain cache)
+cache = false
+
+# Whether to persist user environment variables (API keys) to the database
+# Set to true to store user env vars in DB, false to exclude them for security
+persist_user_env = false
+
+# Whether to mask user environment variables (API keys) in the UI with password type
+# Set to true to show API keys as ***, false to show them as plain text
+mask_user_env = false
+
+# Authorized origins
+allow_origins = ["*"]
+
+[features]
+# Process and display HTML in messages. This can be a security risk (see https://stackoverflow.com/questions/19603097/why-is-it-dangerous-to-render-user-generated-html-or-javascript)
+unsafe_allow_html = false
+
+# Process and display mathematical expressions. This can clash with "$" characters in messages.
+latex = false
+
+# Autoscroll new user messages at the top of the window
+user_message_autoscroll = true
+
+# Automatically tag threads with the current chat profile (if a chat profile is used)
+auto_tag_thread = true
+
+# Allow users to edit their own messages
+edit_message = true
+
+# Allow users to share threads (backend + UI). Requires an app-defined on_shared_thread_view callback.
+allow_thread_sharing = false
+
+[features.slack]
+# Add emoji reaction when message is received (requires reactions:write OAuth scope)
+reaction_on_message_received = false
+
+# Authorize users to spontaneously upload files with messages
+[features.spontaneous_file_upload]
+    enabled = true
+    accept = ["image/*", "audio/*", "application/pdf"]
+    max_files = 5
+    max_size_mb = 25
+
+[features.audio]
+    # Enable audio features for voice messages
+    enabled = true
+
+    # Threshold for audio recording
+    min_decibels = -45
+
+    # Delay for user to start speaking in MS 
+    initial_silence_timeout = 3000
+
+    # Delay for the user to continue speaking in MS. If the user stops speaking for this duration, the recording will stop.
+    silence_timeout = 1500
+
+    # Above this duration (MS), the recording will forcefully stop.
+    max_duration = 60000
+
+    # Duration of the audio chunks in MS 
+    chunk_duration = 1000
+    # Sample rate of the audio
+    sample_rate = 44100
+
+[features.mcp]
+    # Enable Model Context Protocol (MCP) features
+    enabled = false
+
+[features.mcp.sse]
+    enabled = true
+
+[features.mcp.streamable-http]
+    enabled = true
+
+[features.mcp.stdio]
+    enabled = true
+    allowed_executables = [ "npx", "uvx" ]
+
+[UI]
+# Name of the assistant.
+name = "Coach Aria"
+
+# Description of the assistant. This is used for HTML tags.
+description = "Your dedicated life coach for personal growth and transformation"
+
+# Chain of Thought (CoT) display mode. Can be "hidden", "tool_call" or "full".
+cot = "hidden"
+
+# Custom avatar for the assistant
+default_avatar_file_url = "/public/avatars/aria.png"
+
+# The style of alert boxes. Can be "classic" or "modern".
+alert_style = "modern"
+
+# Custom logo for Coach Aria
+custom_css = "/public/styles.css"
+
+# Layout setting - default or wide
+# layout = "default"
+
+[UI.theme]
+    default = "dark"
+    layout = "default"
+    font_family = "Inter, system-ui, -apple-system, sans-serif"
+
+# Override default MUI light theme.
+[UI.theme.light]
+    background = "#F8FAF9"
+    paper = "#FFFFFF"
+
+    [UI.theme.light.primary]
+        main = "#0D9488"      # Teal - calming, professional
+        dark = "#0F766E"      # Darker teal
+        light = "#CCFBF1"     # Light teal accent
+    [UI.theme.light.text]
+        primary = "#1F2937"
+        secondary = "#6B7280"
+
+# Override default MUI dark theme.
+[UI.theme.dark]
+    background = "#0F172A"    # Deep navy - calming night mode
+    paper = "#1E293B"         # Slate for cards
+
+    [UI.theme.dark.primary]
+        main = "#14B8A6"      # Bright teal - inviting
+        dark = "#0D9488"      # Standard teal
+        light = "#2DD4BF"     # Light teal for accents
+    [UI.theme.dark.text]
+        primary = "#F1F5F9"   # Clean white
+        secondary = "#94A3B8" # Muted slate
+
+
+[meta]
+generated_by = "2.9.3"
+

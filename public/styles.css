@@ -1,0 +1,23 @@
+/* Coach Aria Custom Styles */
+
+/* Custom logo in header */
+.cl-header img.cl-logo {
+    content: url('/public/logo.png');
+    height: 40px;
+    width: auto;
+}
+
+/* Subtle animations for a calming experience */
+.cl-message {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Smooth scrolling */
+.cl-chat-container {
+    scroll-behavior: smooth;
+}
