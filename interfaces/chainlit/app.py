@@ -2,7 +2,9 @@ import sys
 from pathlib import Path
 
 # Add project root to path for imports
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+PROJECT_ROOT = str(Path(__file__).resolve().parent.parent.parent)
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 import chainlit as cl 
 from langchain_core.messages import AIMessageChunk, HumanMessage
@@ -14,6 +16,10 @@ async def on_chat_start():
 
 @cl.on_message 
 async def on_message(message: cl.Message):
+    # Ensure path is set (needed for Chainlit workers)
+    if PROJECT_ROOT not in sys.path:
+        sys.path.insert(0, PROJECT_ROOT)
+    
     # Lazy import to allow server to start before loading heavy ML models
     from graph.graph import create_graph
     
