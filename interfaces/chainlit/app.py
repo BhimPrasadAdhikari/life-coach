@@ -5,7 +5,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 import chainlit as cl 
-from graph.graph import create_graph
 from langchain_core.messages import AIMessageChunk, HumanMessage
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver 
 
@@ -15,6 +14,9 @@ async def on_chat_start():
 
 @cl.on_message 
 async def on_message(message: cl.Message):
+    # Lazy import to allow server to start before loading heavy ML models
+    from graph.graph import create_graph
+    
     msg = cl.Message(content="")
     content = message.content 
     thread_id = cl.user_session.get("thread_id")
@@ -31,6 +33,3 @@ async def on_message(message: cl.Message):
                     await msg.stream_token(chunk[0].content) 
 
         await msg.send()
-
-
-
