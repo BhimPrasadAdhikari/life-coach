@@ -14,6 +14,7 @@ I'm a **2nd year undergraduate student** pursuing **AI & Machine Learning**, and
 
 - **Have meaningful coaching conversations** powered by Llama 3.3
 - **Understand your voice** using Whisper STT
+- **Understand images you send** using Llama 4 Scout Vision
 - **Speak back to you** with natural voice synthesis via ElevenLabs
 - **Generate contextual images** using Stable Diffusion XL
 - **Remember important details** about you across sessions using vector memory
@@ -25,17 +26,41 @@ I'm a **2nd year undergraduate student** pursuing **AI & Machine Learning**, and
 
 ## Features in Action
 
-### Conversational Coaching
-<!-- Add screenshot: public/screenshots/conversation.png -->
-![Conversation Demo](public/screenshots/conversation.png)
+### Voice Understanding
 
-*Aria provides empathetic, growth-mindset coaching powered by Llama 3.3*
+Aria can listen to your voice messages and transcribe them in real-time using Whisper.
 
-### Voice Interaction
-<!-- Add screenshot: public/screenshots/voice.png -->
-![Voice Demo](public/screenshots/voice.png)
+<p align="center">
+    <img src="public/screenshots/understand_voice.png" width="700" />
+</p>
 
-*Send voice messages and receive natural voice responses*
+*Voice messages are transcribed using Whisper Large v3 Turbo via Groq*
+
+---
+
+### Image Understanding
+
+Aria can analyze and understand images you send, providing detailed descriptions and context-aware responses.
+
+<p align="center">
+    <img src="public/screenshots/understand_image.png" width="700" />
+</p>
+
+*Aria uses Llama 4 Scout Vision model to understand and describe images*
+
+---
+
+### Voice Response
+
+Aria can speak back to you with natural, expressive voice synthesis.
+
+<p align="center">
+    <video src="public/screenshots/videos/agent_speak.mp4" controls width="700"></video>
+</p>
+
+*Natural voice responses powered by ElevenLabs TTS*
+
+---
 
 ### AI Image Generation
 
@@ -62,6 +87,7 @@ Aria can generate contextual images based on the conversation. Here are some exa
 | **Conversational Coaching** | Empathetic, growth-mindset based conversations | LangGraph, Groq Llama 3.3 |
 | **Voice Input** | Transcribes your voice messages in real-time | Whisper Large v3 Turbo via Groq |
 | **Voice Output** | Sends voice responses that sound natural | ElevenLabs TTS |
+| **Image Understanding** | Analyzes images you send and responds intelligently | Llama 4 Scout Vision via Groq |
 | **Image Generation** | Creates visualizations based on conversation context | Stable Diffusion XL via HuggingFace |
 | **Long-Term Memory** | Remembers your goals, challenges, and preferences | Vector Store + Semantic Search |
 | **Smart Routing** | Automatically decides when to respond with text, voice, or images | LLM-powered intent classification |
@@ -69,6 +95,8 @@ Aria can generate contextual images based on the conversation. Here are some exa
 ---
 
 ## System Architecture
+
+### High-Level Workflow
 
 ```mermaid
 graph TD
@@ -83,12 +111,57 @@ graph TD
     G --> H[Response to User]
 ```
 
-The architecture follows a **stateful graph-based workflow** using LangGraph:
+### Detailed Node Operations
 
-1. **Memory Retrieval Node** — Fetches relevant past memories using semantic search
-2. **Router Node** — Classifies user intent (conversation, audio, or image request)
-3. **Response Nodes** — Generates appropriate response based on routing decision
-4. **Memory Saving Node** — Extracts and stores important information for future sessions
+```mermaid
+flowchart TB
+    subgraph INPUT["Input Processing"]
+        UI[User Message] --> |Text/Voice/Image| PRE[Preprocessing]
+        PRE --> |Voice| STT[Speech-to-Text<br/>Whisper v3]
+        PRE --> |Image| ITT[Image-to-Text<br/>Llama 4 Scout]
+        STT --> MSG[Processed Message]
+        ITT --> MSG
+        PRE --> |Text| MSG
+    end
+
+    subgraph MEMORY["Memory Layer"]
+        MSG --> MR[Memory Retrieval Node]
+        MR --> |Semantic Search| VS[(Qdrant<br/>Vector Store)]
+        VS --> |Relevant Memories| CTX[Context Injection]
+    end
+
+    subgraph ROUTING["Smart Routing"]
+        CTX --> ROUTER[Router Node<br/>LLM Classification]
+        ROUTER --> |conversation| CONV
+        ROUTER --> |audio| AUDIO
+        ROUTER --> |image| IMG
+    end
+
+    subgraph RESPONSE["Response Generation"]
+        CONV[Conversation Node<br/>Llama 3.3 70B]
+        AUDIO[Audio Node<br/>+ ElevenLabs TTS]
+        IMG[Image Node<br/>+ SDXL Generation]
+    end
+
+    subgraph OUTPUT["Output & Learning"]
+        CONV --> MS[Memory Saving Node]
+        AUDIO --> MS
+        IMG --> MS
+        MS --> |Extract Important Info| VS
+        MS --> RESP[Response to User]
+    end
+```
+
+### How Each Node Works
+
+| Node | Purpose | What It Does |
+|------|---------|--------------|
+| **Memory Retrieval** | Context Loading | Searches vector store for relevant past memories using semantic similarity |
+| **Router** | Intent Classification | Uses LLM to classify if user wants text, audio, or image response |
+| **Conversation** | Text Response | Generates empathetic coaching response using Llama 3.3 |
+| **Audio** | Voice Response | Generates text response + converts to speech via ElevenLabs |
+| **Image** | Visual Response | Creates scenario prompt → enhances it → generates image via SDXL |
+| **Memory Saving** | Learning | Analyzes conversation for important facts and stores in vector DB |
 
 ---
 
@@ -98,6 +171,7 @@ The architecture follows a **stateful graph-based workflow** using LangGraph:
 |-------|------------|
 | **Framework** | LangGraph |
 | **LLM** | Groq (Llama 3.3 70B) |
+| **Vision** | Llama 4 Scout Vision |
 | **STT** | Whisper Large v3 Turbo |
 | **TTS** | ElevenLabs |
 | **Image Gen** | Stable Diffusion XL |
