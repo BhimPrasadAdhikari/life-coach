@@ -54,9 +54,7 @@ Aria can analyze and understand images you send, providing detailed descriptions
 
 Aria can speak back to you with natural, expressive voice synthesis.
 
-<p align="center">
-    <video src="public/screenshots/videos/agent_speak.mp4" controls width="700"></video>
-</p>
+https://github.com/BhimPrasadAdhikari/life-coach/raw/main/public/screenshots/videos/agent_speak.mp4
 
 *Natural voice responses powered by ElevenLabs TTS*
 
