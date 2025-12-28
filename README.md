@@ -226,9 +226,7 @@ chainlit run interfaces/chainlit/app.py -w
 I'm actively looking for **internship and full-time opportunities** in AI/ML Engineering.
 
 <p align="center">
-    <a href="https://linkedin.com/in/your-linkedin">LinkedIn</a> •
-    <a href="mailto:your-email@example.com">Email</a> •
-    <a href="https://github.com/BhimPrasadAdhikari">GitHub</a>
+    <a href="https://www.linkedin.com/in/bhim-prasad-adhikari-42b19b248/">LinkedIn</a> •
 </p>
 
 ---
