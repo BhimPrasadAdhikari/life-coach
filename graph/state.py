@@ -6,4 +6,4 @@ class State(MessagesState):
     memory_context: str 
     workflow: Literal["conversation", "audio", "image"]
     audio_buffer: bytes
-    image_buffer: bytes
+    image_path: str

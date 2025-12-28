@@ -1,5 +1,5 @@
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from .helper import get_chat_model
+from .llm import get_chat_model
 from core.prompts import SYSTEM_PROMPT, ROUTER_PROMPT
 from pydantic import BaseModel, Field
 from typing import Literal
