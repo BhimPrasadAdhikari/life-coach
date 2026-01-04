@@ -1,9 +1,10 @@
 from .state import State 
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, RemoveMessage
 from langchain_core.runnables import RunnableConfig
 from .utils.chains import get_character_response_chain, get_router_chain
 from modules.memory.long_term.memory_manager import get_memory_manager
 from .utils.helper import get_text_to_speech_module, get_text_to_image_module
+from .utils.llm import get_chat_model
 import os
 import uuid
 
@@ -91,3 +92,28 @@ def memory_retrieval_node(state: State):
 
     memory_context = memory_manager.format_memories_for_prompt(memories)
     return {"memory_context": memory_context}
+
+async def summarization_node(state: State):
+    """Summarize the long number of messages to reduce context overhead"""
+    model = get_chat_model()
+    summary = state.get("summary", "")
+
+    if summary:
+        summary_message = (
+            f"This is summary of the conversation to date between Coach Aria and the user: {summary}\n\n"
+            "Extend the summary by taking into account the new messages above."
+        )
+    else:
+        summary_message = (
+            "Create a summary of the conversation above between Coach Aria and the User."
+            "The summary must be a short description of the conversation so far,"
+            "but that captures all the relevant information shared between Coach Aria and the user: "
+        )
+
+    messages = state["messages"] + [HumanMessage(content=summary_message)]
+    response = await  model.ainvoke(messages)
+
+    delete_messages = [RemoveMessage(id=m.id) for m in state["messages"][:-20]]
+
+    return {"summary": response.content, "messages": delete_messages}
+

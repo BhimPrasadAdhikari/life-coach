@@ -203,7 +203,13 @@ pip install -r requirements.txt
 
 ### Environment Setup
 
-Create a `.env` file in the root directory:
+Copy the example environment file and add your API keys:
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` with your API keys. **📖 See [API Setup Guide](docs/API_SETUP_GUIDE.md) for detailed instructions on obtaining all API keys.**
 
 ```env
 GROQ_API_KEY=your_groq_api_key
