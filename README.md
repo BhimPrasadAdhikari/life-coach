@@ -227,6 +227,14 @@ chainlit run interfaces/chainlit/app.py -w
 
 ---
 
+## Contributing
+
+Contributions are welcome, but the project follows strict contribution and quality rules.
+
+Please read **[CONTRIBUTING.md](CONTRIBUTING.md)** before opening an issue or pull request.
+
+---
+
 ## Let's Connect!
 
 I'm actively looking for **internship and full-time opportunities** in AI/ML Engineering.
