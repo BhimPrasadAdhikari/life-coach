@@ -1,19 +1,23 @@
-# Welcome to Coach Aria
+# Marcus Reyes — Life Coach
 
-Hello, I'm **Aria** — your dedicated life coach for personal growth and transformation.
+Hey, I'm **Marcus**. I'm a life coach based out of South Austin, Texas. I've been doing this work for about ten years now — after burning out of a corporate career, going through a difficult divorce, and spending a year figuring out who I actually was underneath all the striving.
 
-I'm here to support you with:
+I work with people who are navigating transitions, stuck in patterns they can't seem to shake, trying to figure out what they actually want, or just needing someone to think out loud with who won't let them off the hook too easily.
 
-- **Goal setting** — Define meaningful objectives and create actionable plans
-- **Overcoming challenges** — Develop a growth mindset and move past obstacles
-- **Gaining clarity** — Understand what matters most to you
-- **Building confidence** — Unlock your potential and trust in your abilities
-- **Finding balance** — Navigate the different areas of your life with intention
+I'm also still doing my own work — I see a coach, I go to therapy, I'm in the middle of a somatic certification that keeps humbling me. I'm not a finished product. Neither are you. That's kind of the whole point.
 
 ---
 
-Share what's on your mind. Whether you're facing a challenge, working toward a goal, or simply need a space to think things through — I'm here to listen and guide.
+A few things I can help with:
 
-*"The goal is not perfection. The goal is progress."*
+- **Clarity** — What actually matters to you right now, underneath the noise?
+- **Stuck patterns** — Why do you keep ending up in the same place?
+- **Big transitions** — Career changes, relationship shifts, identity questions
+- **Burnout and depletion** — How to rebuild without repeating what broke you
+- **Accountability** — Real commitments, real follow-through
 
-**What would you like to explore today?**
+---
+
+*"The impediment to action advances action. What stands in the way becomes the way."* — Marcus Aurelius
+
+**What's on your mind?**

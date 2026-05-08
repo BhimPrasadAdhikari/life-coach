@@ -1,11 +1,11 @@
 /* Coach Aria Custom Styles */
 
-/* Custom logo in header */
-.cl-header img.cl-logo {
+/* Custom logo in header  */
+/* .cl-header img.cl-logo {
     content: url('/public/logo.png');
     height: 40px;
     width: auto;
-}
+} */
 
 /* Subtle animations for a calming experience */
 .cl-message {

@@ -75,7 +75,7 @@ reaction_on_message_received = false
 
 [features.mcp]
     # Enable Model Context Protocol (MCP) features
-    enabled = false
+    enabled = true
 
 [features.mcp.sse]
     enabled = true
@@ -95,10 +95,15 @@ name = "Coach Aria"
 description = "Your dedicated life coach for personal growth and transformation"
 
 # Chain of Thought (CoT) display mode. Can be "hidden", "tool_call" or "full".
-cot = "hidden"
+cot = "tool_call"
 
 # Custom avatar for the assistant
-default_avatar_file_url = "/public/avatars/aria.png"
+default_avatar_file_url = "public/images/image_1d43ba19-8174-4f60-af64-27bd77a8b85b.png"
+login_page_image = "public/images/image_1d43ba19-8174-4f60-af64-27bd77a8b85b.png"
+
+login_page_image_filter = "brightness-50"
+login_page_image_dark_filter = "contrast-150"
+
 
 # The style of alert boxes. Can be "classic" or "modern".
 alert_style = "modern"
@@ -107,7 +112,7 @@ alert_style = "modern"
 custom_css = "/public/styles.css"
 
 # Layout setting - default or wide
-# layout = "default"
+# layout = "wide"
 
 [UI.theme]
     default = "dark"

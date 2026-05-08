@@ -7,11 +7,11 @@ import logging
 from typing import Optional, List
 from pydantic import BaseModel, Field
 
-from langchain_groq import ChatGroq 
-from langchain_core.messages import BaseMessage 
+from langchain_core.messages import BaseMessage
 
-from .vector_store import get_vector_store 
+from .vector_store import get_vector_store
 from core.prompts import MEMORY_ANALYSIS_PROMPT
+from graph.utils.llm import make_llm
 class MemoryAnalysis(BaseModel):
     """Memory analysis result"""
 
@@ -30,12 +30,10 @@ class MemoryManager:
     def __init__(self):
         self.vector_store = get_vector_store()
         self.logger = logging.getLogger(__name__)
-        self.llm = ChatGroq(
-            model="llama-3.1-8b-instant",
-            api_key=os.getenv("GROQ_API_KEY"),
-            temperature=0.1,
-            max_retries=2,
-        ).with_structured_output(MemoryAnalysis)
+        # Use centralized model selection
+        from core.config import MEMORY_ANALYSIS_MODEL_KEY
+
+        self.llm = make_llm(MEMORY_ANALYSIS_MODEL_KEY, temperature=0.1).with_structured_output(MemoryAnalysis)
 
     async def _analyze_memory(self, message: str) -> MemoryAnalysis:
         prompt = MEMORY_ANALYSIS_PROMPT.format(message=message)
