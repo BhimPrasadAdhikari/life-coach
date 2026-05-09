@@ -6,6 +6,11 @@
 
 ---
 
+Chat with it. Go to the website https://life-coach-production-02f3.up.railway.app/. 
+Login credentials: 
+**username**: user 
+**password**: password
+
 ## Hi, I'm Bhim Prasad Adhikari
 
 I'm a **2nd year undergraduate student** pursuing **AI & Machine Learning**, and I built this project to showcase my passion for building end-to-end AI systems.
