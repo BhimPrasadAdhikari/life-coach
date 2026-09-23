@@ -25,7 +25,7 @@ I'm a **2nd year undergraduate student** pursuing **AI & Machine Learning**, and
 - **Remember important details** about you across sessions using vector memory
 - **Intelligently route** between text, audio, and image responses
 
-> I built this to demonstrate that I can design, architect, and implement complex AI systems from scratch — not just follow tutorials.
+> I built this to demonstrate that I can build and operate a complete multimodal AI application from scratch — not just follow tutorials.
 
 ---
 
@@ -97,77 +97,6 @@ Aria can generate contextual images based on the conversation. Here are some exa
 
 ---
 
-## System Architecture
-
-### High-Level Workflow
-
-```mermaid
-graph TD
-    A[User Input] --> B[Memory Retrieval]
-    B --> C[Smart Router]
-    C -->|Text| D[Conversation Node]
-    C -->|Audio| E[Audio Node - TTS]
-    C -->|Image| F[Image Node - SDXL]
-    D --> G[Memory Saving]
-    E --> G
-    F --> G
-    G --> H[Response to User]
-```
-
-### Detailed Node Operations
-
-```mermaid
-flowchart TB
-    subgraph INPUT["Input Processing"]
-        UI[User Message] --> |Text/Voice/Image| PRE[Preprocessing]
-        PRE --> |Voice| STT[Speech-to-Text<br/>Whisper v3]
-        PRE --> |Image| ITT[Image-to-Text<br/>Llama 4 Scout]
-        STT --> MSG[Processed Message]
-        ITT --> MSG
-        PRE --> |Text| MSG
-    end
-
-    subgraph MEMORY["Memory Layer"]
-        MSG --> MR[Memory Retrieval Node]
-        MR --> |Semantic Search| VS[(Qdrant<br/>Vector Store)]
-        VS --> |Relevant Memories| CTX[Context Injection]
-    end
-
-    subgraph ROUTING["Smart Routing"]
-        CTX --> ROUTER[Router Node<br/>LLM Classification]
-        ROUTER --> |conversation| CONV
-        ROUTER --> |audio| AUDIO
-        ROUTER --> |image| IMG
-    end
-
-    subgraph RESPONSE["Response Generation"]
-        CONV[Conversation Node<br/>Llama 3.3 70B]
-        AUDIO[Audio Node<br/>+ ElevenLabs TTS]
-        IMG[Image Node<br/>+ SDXL Generation]
-    end
-
-    subgraph OUTPUT["Output & Learning"]
-        CONV --> MS[Memory Saving Node]
-        AUDIO --> MS
-        IMG --> MS
-        MS --> |Extract Important Info| VS
-        MS --> RESP[Response to User]
-    end
-```
-
-### How Each Node Works
-
-| Node | Purpose | What It Does |
-|------|---------|--------------|
-| **Memory Retrieval** | Context Loading | Searches vector store for relevant past memories using semantic similarity |
-| **Router** | Intent Classification | Uses LLM to classify if user wants text, audio, or image response |
-| **Conversation** | Text Response | Generates empathetic coaching response using Llama 3.3 |
-| **Audio** | Voice Response | Generates text response + converts to speech via ElevenLabs |
-| **Image** | Visual Response | Creates scenario prompt → enhances it → generates image via SDXL |
-| **Memory Saving** | Learning | Analyzes conversation for important facts and stores in vector DB |
-
----
-
 ## Tech Stack
 
 | Layer | Technology |
@@ -189,7 +118,8 @@ flowchart TB
 ### Prerequisites
 
 - Python 3.13+
-- API Keys for: Groq, ElevenLabs, HuggingFace, Qdrant
+- Docker Desktop
+- API keys for Groq, ElevenLabs, and Hugging Face
 
 ### Installation
 
@@ -203,7 +133,13 @@ python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
+```
+
+Start the local PostgreSQL, Redis, and Qdrant services:
+
+```bash
+docker compose up -d
 ```
 
 ### Environment Setup
@@ -220,8 +156,10 @@ Then edit `.env` with your API keys. **📖 See [API Setup Guide](docs/API_SETUP
 GROQ_API_KEY=your_groq_api_key
 ELEVENLABS_API_KEY=your_elevenlabs_api_key
 HF_TOKEN=your_huggingface_token
-QDRANT_URL=your_qdrant_url
-QDRANT_API_KEY=your_qdrant_api_key
+CHECKPOINT_DATABASE_URL=postgresql://marcus:marcus_dev_password@localhost:5432/marcus
+REDIS_URL=redis://localhost:6379/0
+QDRANT_URL=http://localhost:6333
+QDRANT_API_KEY=
 ```
 
 ### Run the Application
@@ -229,6 +167,8 @@ QDRANT_API_KEY=your_qdrant_api_key
 ```bash
 python scripts/run_chainlit.py run interfaces/chainlit/app.py --host 127.0.0.1 --port 8001 --headless
 ```
+
+Open [http://localhost:8001](http://localhost:8001) in your browser. See the [API Setup Guide](docs/API_SETUP_GUIDE.md) for WhatsApp, hosted Qdrant, and provider configuration.
 
 ---
 
