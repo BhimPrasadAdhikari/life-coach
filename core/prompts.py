@@ -598,8 +598,8 @@ def generate_weekly_reflection(input_data: str) -> str:
     focus = input_data.strip() if input_data.strip() else "general life progress"
     
     return f\"\"\"
-WEEKLY REFLECTION — Focus: {focus.title()}
-{'=' * 50}
+WEEKLY REFLECTION — Focus: {{focus.title()}}
+{{'=' * 50}}
 
 LOOKING BACK (This past week)
 1. What went well? What are you proud of, even if it's small?

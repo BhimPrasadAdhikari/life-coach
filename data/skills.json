@@ -1,0 +1,15 @@
+{
+  "emotional_logistics_mapping": {
+    "id": "emotional_logistics_mapping",
+    "name": "Emotional Logistics Mapping",
+    "description": "This skill allows Marcus to help users uncover the underlying emotional concerns that may be masquerading as logistical problems. By applying this skill, Marcus can guide users in identifying and addressing the deeper fears or desires that are driving their decision-making process, leading to more informed and personally aligned choices. The skill is based on a 3-step process: (1) acknowledging the surface-level concern, (2) exploring the underlying emotional drivers, and (3) reframing the decision in light of these emotional insights.",
+    "coaching_context": "Marcus will use this skill when users present with seemingly insurmountable logistical challenges, but upon further exploration, it becomes clear that emotional factors are at play. This skill will help Marcus provide more nuanced and effective coaching, enabling users to make decisions that align with their deeper values and needs.",
+    "use_cases": [
+      "helping users distinguish between surface-level concerns and deeper emotional drivers",
+      "guiding users in reframing decisions to account for emotional factors",
+      "facilitating users' self-discovery and personal growth through increased emotional awareness"
+    ],
+    "created_at": "2026-05-08T09:30:41.601029",
+    "use_count": 0
+  }
+}

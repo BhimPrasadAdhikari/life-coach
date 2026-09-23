@@ -1,190 +1,256 @@
-import os 
-from dataclasses import dataclass 
-from datetime import datetime 
+from __future__ import annotations
+
+import logging
+import os
+import uuid
+from dataclasses import dataclass
+from datetime import datetime
+from threading import Lock
+from typing import List, Optional
 from urllib.parse import urlparse
 
-from typing import List, Optional 
-from qdrant_client import QdrantClient 
-from qdrant_client.models import Distance, PointStruct, VectorParams, ScoredPoint 
-from sentence_transformers import SentenceTransformer 
-import logging
+from qdrant_client import QdrantClient
+from qdrant_client.models import (
+    Distance,
+    FieldCondition,
+    Filter,
+    MatchValue,
+    PointStruct,
+    VectorParams,
+)
+from sentence_transformers import SentenceTransformer
+
+from core.config import QDRANT_MEMORY_COLLECTION, SIMILARITY_THRESHOLD
+
+
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class Memory:
-    "Represents a memory entry in the vector store"
-    text: str 
-    metadata: dict 
-    score: Optional[float] = None 
+    """Represents one stored memory."""
 
-    @property 
+    text: str
+    metadata: dict
+    score: Optional[float] = None
+
+    @property
     def id(self) -> Optional[str]:
-        return self.metadata.get("id") 
+        return self.metadata.get("id")
 
     @property
     def timestamp(self) -> Optional[datetime]:
-        ts = self.metadata.get("timestamp")
-        return datetime.fromisoformat(ts) if ts else None 
+        value = self.metadata.get("timestamp")
+        return datetime.fromisoformat(value) if value else None
+
+
+def get_user_collection_name(user_id: str) -> str:
+    """Return a sanitized, user-namespaced Qdrant collection name."""
+    clean_id = "".join(c for c in (user_id or "") if c.isalnum() or c in ("_", "-"))
+    if not clean_id:
+        clean_id = "default"
+    return f"marcus_memory_{clean_id}"
+
 
 class VectorStore:
-    """ A class to handle vector storage operations using Qdrant""" 
-    _initialized: bool = False 
-    collection_name: str = "lifecoach_memory"
-    from core.config import SIMILARITY_THRESHOLD
-    similarity_threshold: float = SIMILARITY_THRESHOLD
-    def __init__(self):
-        if not self._initialized:
-            self._initialized = True
-            self.logger = logging.getLogger(__name__)
-            self.available = False
-            self.model = SentenceTransformer("all-MiniLM-L6-v2")
-            raw_url = os.getenv("QDRANT_URL", "").strip()
-            api_key = os.getenv("QDRANT_API_KEY")
+    """Synchronous Qdrant-backed store using one user-filtered collection."""
 
-            if not raw_url or not api_key:
-                self.logger.warning("Qdrant disabled: missing QDRANT_URL or QDRANT_API_KEY")
-                return
+    similarity_threshold = SIMILARITY_THRESHOLD
 
-            parsed = urlparse(raw_url if "://" in raw_url else f"https://{raw_url}")
-            host = parsed.hostname
-            https = parsed.scheme != "http"
-            port = parsed.port if parsed.port else (6333 if https else 6333)
+    def __init__(self) -> None:
+        self.available = False
+        self.client: Optional[QdrantClient] = None
 
-            if not host:
-                self.logger.error(f"Qdrant disabled: invalid QDRANT_URL '{raw_url}'")
-                return
+        # This can load or download the model, so construct VectorStore
+        # outside the event loop or inside asyncio.to_thread().
+        self.model = SentenceTransformer("all-MiniLM-L6-v2")
 
-            try:
-                self.client = QdrantClient(
-                    host=host,
-                    port=port,
-                    https=https,
-                    api_key=api_key,
-                    timeout=60,
-                    check_compatibility=False,
-                )
-                self.client.get_collections()
-                self.available = True
-            except Exception as e:
-                self.logger.error(f"Qdrant unavailable, continuing without long-term memory: {e}")
+        raw_url = os.getenv("QDRANT_URL", "").strip()
+        api_key = os.getenv("QDRANT_API_KEY", "").strip()
 
-    def _collection_exists(self) -> bool:
-        if not self.available:
+        if not raw_url:
+            logger.warning(
+                "Qdrant disabled because QDRANT_URL is missing"
+            )
+            return
+
+        parsed = urlparse(
+            raw_url if "://" in raw_url else f"https://{raw_url}"
+        )
+
+        if not parsed.hostname:
+            logger.error("Invalid QDRANT_URL: %s", raw_url)
+            return
+
+        try:
+            self.client = QdrantClient(
+                host=parsed.hostname,
+                port=parsed.port or 6333,
+                https=parsed.scheme != "http",
+                api_key=api_key,
+                timeout=60,
+                check_compatibility=False,
+            )
+
+            # This is a synchronous network request.
+            self.client.get_collections()
+            self.available = True
+
+        except Exception as exc:
+            logger.error(
+                "Qdrant unavailable; long-term memory is disabled: %s",
+                exc,
+            )
+
+    def _collection_exists(self, collection_name: str) -> bool:
+        if not self.available or self.client is None:
             return False
+
         try:
             collections = self.client.get_collections().collections
-            return any(col.name == self.collection_name for col in collections)
-        except Exception as e:
-            self.logger.warning(f"Qdrant collection check failed: {e}")
+            return any(
+                collection.name == collection_name
+                for collection in collections
+            )
+        except Exception as exc:
+            logger.warning("Qdrant collection check failed: %s", exc)
             self.available = False
             return False
-    
-    def _create_collection(self) -> None:
-        if not self.available:
+
+    def _create_collection(self, collection_name: str) -> None:
+        if not self.available or self.client is None:
             return
-        sample_embedding = self.model.encode("sample text")
+
         try:
+            sample_embedding = self.model.encode("sample text")
+
             self.client.create_collection(
-                collection_name=self.collection_name,
+                collection_name=collection_name,
                 vectors_config=VectorParams(
                     size=len(sample_embedding),
                     distance=Distance.COSINE,
                 ),
             )
-        except Exception as e:
-            self.logger.warning(f"Qdrant create_collection failed: {e}")
+        except Exception as exc:
+            logger.warning("Qdrant collection creation failed: %s", exc)
             self.available = False
 
-    def find_similar_memory(self, text: str) -> Optional[Memory]:
-        """Find if a similar memory already exists.
+    def find_similar_memory(
+        self, text: str, user_id: str = "default"
+    ) -> Optional[Memory]:
+        results = self.search_memories(text, k=1, user_id=user_id)
 
-        Args: 
-         text: The text to search for.
-        
-        Returns:
-         Optional Memory if a similar one is found
-        """
-
-        results = self.search_memories(text, k=1)
-        if results and results[0].score >= self.similarity_threshold:
+        if (
+            results
+            and results[0].score is not None
+            and results[0].score >= self.similarity_threshold
+        ):
             return results[0]
+
         return None
 
-    def store_memory(self, text: str, metadata: dict) -> None:
-        """Store a new memory in the vector store.
-        Args:
-         text: The text of the memory.
-         metadata: The metadata associated with the memory.
-        """ 
-        if not self.available:
+    def store_memory(
+        self, text: str, metadata: dict, user_id: str = "default"
+    ) -> None:
+        if not self.available or self.client is None:
             return
-        if not self._collection_exists():
-            self._create_collection()
+
+        collection_name = QDRANT_MEMORY_COLLECTION
+
+        if not self._collection_exists(collection_name):
+            self._create_collection(collection_name)
+
             if not self.available:
                 return
 
-        similar_memory = self.find_similar_memory(text)
+        similar_memory = self.find_similar_memory(text, user_id=user_id)
+
         if similar_memory and similar_memory.id:
-            metadata["id"] = similar_memory.id 
-        
-        # Generate UUID if no ID provided (Qdrant requires unsigned int or UUID)
-        import uuid
+            metadata["id"] = similar_memory.id
+
         point_id = metadata.get("id") or str(uuid.uuid4())
-        
         embedding = self.model.encode(text).tolist()
+
         point = PointStruct(
             id=point_id,
             vector=embedding,
             payload={
                 "text": text,
                 **metadata,
-            }
+                "user_id": user_id,
+            },
         )
 
         try:
             self.client.upsert(
-                collection_name=self.collection_name,
+                collection_name=collection_name,
                 points=[point],
             )
-        except Exception as e:
-            self.logger.warning(f"Qdrant upsert failed: {e}")
+        except Exception as exc:
+            logger.warning("Qdrant upsert failed: %s", exc)
             self.available = False
-    
-    def search_memories(self, query: str, k: int = 5) -> List[Memory]:
-        if not self.available:
+
+    def search_memories(
+        self,
+        query: str,
+        k: int = 5,
+        user_id: str = "default",
+    ) -> List[Memory]:
+        if not self.available or self.client is None:
             return []
-        if not self._collection_exists():
+
+        collection_name = QDRANT_MEMORY_COLLECTION
+
+        if not self._collection_exists(collection_name):
             return []
 
         query_embedding = self.model.encode(query).tolist()
 
         try:
             response = self.client.query_points(
-                collection_name=self.collection_name,
+                collection_name=collection_name,
                 query=query_embedding,
                 limit=k,
+                query_filter=Filter(
+                    must=[
+                        FieldCondition(
+                            key="user_id",
+                            match=MatchValue(value=user_id),
+                        )
+                    ]
+                ),
             )
-        except Exception as e:
-            self.logger.warning(f"Qdrant query failed: {e}")
+        except Exception as exc:
+            logger.warning("Qdrant query failed: %s", exc)
             self.available = False
             return []
 
-        points = response.points
-
         return [
             Memory(
-                text=point.payload["text"],
-                metadata={key: val for key, val in point.payload.items() if key != "text"},
+                text=point.payload.get("text", ""),
+                metadata={
+                    key: value
+                    for key, value in point.payload.items()
+                    if key != "text"
+                },
                 score=point.score,
             )
-            for point in points
+            for point in response.points
         ]
 
 
+_vector_store: Optional[VectorStore] = None
+_vector_store_lock = Lock()
+
 
 def get_vector_store() -> VectorStore:
-    """Get or create the VectorStore singleton instance."""
-    return VectorStore()
+    """Return the process-wide VectorStore instance."""
 
+    global _vector_store
 
+    if _vector_store is None:
+        with _vector_store_lock:
+            if _vector_store is None:
+                _vector_store = VectorStore()
 
-
+    return _vector_store

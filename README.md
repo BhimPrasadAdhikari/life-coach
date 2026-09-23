@@ -222,7 +222,7 @@ QDRANT_API_KEY=your_qdrant_api_key
 ### Run the Application
 
 ```bash
-chainlit run interfaces/chainlit/app.py -w
+python scripts/run_chainlit.py run interfaces/chainlit/app.py --host 127.0.0.1 --port 8001 --headless
 ```
 
 ---

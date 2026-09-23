@@ -65,7 +65,7 @@ class ImageToText:
 
             # Make the API call 
             response = self.client.chat.completions.create(
-                model="meta-llama/llama-4-scout-17b-16e-instruct",
+                model="qwen/qwen3.6-27b",
                 messages=messages,
                 max_tokens=1000,
             )
@@ -79,5 +79,12 @@ class ImageToText:
         except Exception as e:
             raise ImageToTextError(f"Failed to analyze image: {e}") from e
 
-           
+_itt_instance: Optional[ImageToText] = None
+
+def get_image_to_text_module() -> ImageToText:
+    """Returns a singleton instance of the ImageToText class."""
+    global _itt_instance
+    if _itt_instance is None:
+        _itt_instance = ImageToText()
+    return _itt_instance           
             

@@ -10,7 +10,8 @@ Welcome to Coach Aria! This guide will walk you through obtaining all the requir
 2. [ElevenLabs API Key](#2-elevenlabs-api-key) - For Text-to-Speech
 3. [HuggingFace Token](#3-huggingface-token) - For Image Generation
 4. [Qdrant Cloud](#4-qdrant-cloud) - For Vector Database (Long-term Memory)
-5. [Final Setup](#5-final-setup)
+5. [WhatsApp Messaging](#5-whatsapp-messaging)
+6. [Final Setup](#6-final-setup)
 
 ---
 
@@ -145,7 +146,37 @@ Qdrant is a vector database that stores and retrieves memories for the AI.
 
 ---
 
-## 5. Final Setup
+## 5. WhatsApp Messaging
+
+The webhook supports two outbound providers. Choose one with `WHATSAPP_PROVIDER`.
+
+### Meta Cloud API
+
+```env
+WHATSAPP_PROVIDER=meta
+WHATSAPP_VERIFY_TOKEN=replace-with-your-webhook-verification-token
+WHATSAPP_APP_SECRET=replace-with-your-meta-app-secret
+WHATSAPP_PHONE_NUMBER_ID=replace-with-your-whatsapp-phone-number-id
+WHATSAPP_ACCESS_TOKEN=replace-with-your-meta-access-token
+WHATSAPP_API_VERSION=v20.0
+```
+
+The Meta access token needs permission to send WhatsApp messages. Configure the webhook callback URL as `https://your-domain/whatsapp/webhook` and use the same `WHATSAPP_VERIFY_TOKEN` during webhook verification.
+
+### Twilio WhatsApp
+
+```env
+WHATSAPP_PROVIDER=twilio
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=replace-with-your-twilio-auth-token
+TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
+```
+
+`TWILIO_WHATSAPP_FROM` must be the WhatsApp-enabled Twilio sender. Twilio webhook payloads are accepted by the same `/whatsapp/webhook` endpoint.
+
+Outbound media requires `AgentResponse.media_url` to be a publicly reachable `http://` or `https://` URL. Local file paths are intentionally not sent to either provider.
+
+## 6. Final Setup
 
 Now that you have all your API keys, create a `.env` file in the project root:
 
@@ -170,7 +201,41 @@ HF_TOKEN=hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 # Qdrant - Vector Database
 QDRANT_URL=https://your-cluster-id.region.aws.cloud.qdrant.io
 QDRANT_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# WhatsApp: configure either Meta or Twilio; see the section above
+WHATSAPP_PROVIDER=meta
+
+# PostgreSQL checkpoint persistence
+CHECKPOINT_DATABASE_URL=postgresql://user:password@host:5432/marcus
+
+# Redis rate limiting and webhook idempotency
+REDIS_URL=redis://localhost:6379/0
+RATE_LIMIT_REQUESTS=60
+RATE_LIMIT_WINDOW_SECONDS=60
+IDEMPOTENCY_TTL_SECONDS=86400
 ```
+
+All LangGraph checkpoints are stored in PostgreSQL. Redis stores per-user rate-limit counters and webhook event keys. Qdrant uses one shared `marcus_memories` collection with a `user_id` payload filter, so creating a new user does not create a new collection.
+
+### Run PostgreSQL, Redis, and Qdrant with Docker
+
+Docker Desktop must be running. From the project root:
+
+```bash
+docker compose up -d
+docker compose ps
+```
+
+For local Docker services, use these application values:
+
+```env
+CHECKPOINT_DATABASE_URL=postgresql://marcus:marcus_dev_password@localhost:5432/marcus
+REDIS_URL=redis://localhost:6379/0
+QDRANT_URL=http://localhost:6333
+QDRANT_API_KEY=
+```
+
+Stop the services with `docker compose down`. Add `-v` only when you intentionally want to delete the PostgreSQL, Redis, and Qdrant data volumes.
 
 ### ⚠️ Important Notes:
 
@@ -202,8 +267,8 @@ Once your `.env` file is set up:
 # Install dependencies (if not already done)
 pip install -r requirements.txt
 
-# Run the application
-chainlit run interfaces/chainlit/app.py -w
+# Run the application. The launcher configures the Windows-compatible event loop.
+python scripts/run_chainlit.py run interfaces/chainlit/app.py --host 127.0.0.1 --port 8001 --headless
 ```
 
 The app will be available at `http://localhost:8000`

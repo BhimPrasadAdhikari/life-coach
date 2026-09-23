@@ -1,1 +1,1 @@
-web: sh -c 'export PYTHONPATH=/opt/render/project/src && chainlit run interfaces/chainlit/app.py --host 0.0.0.0 --port ${PORT:-8000} --headless'
+web: sh -c 'export PYTHONPATH=/opt/render/project/src && python scripts/run_chainlit.py run interfaces/chainlit/app.py --host 0.0.0.0 --port ${PORT:-8000} --headless'

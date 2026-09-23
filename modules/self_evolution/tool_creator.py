@@ -154,9 +154,11 @@ class ToolCreator:
 
     def execute_tool(self, tool_id: str, input_data: str) -> str:
         """
-        Dynamically load and run a registered tool.
-        Returns the tool's string output, or an error message.
+        Dynamically load and run a registered tool using DockerSandbox.
+        Host subprocess execution is strictly disabled.
         """
+        from modules.evolution.sandbox import DockerSandbox
+
         registry = self._load_registry()
         if tool_id not in registry:
             return f"Tool '{tool_id}' is not registered."
@@ -166,107 +168,15 @@ class ToolCreator:
 
         if not tool_file.exists():
             return f"Tool file missing: {tool_file}"
-        # Choose execution mode: 'docker' for containerized sandbox, otherwise local worker
-        exec_mode = os.getenv("TOOL_EXECUTION_MODE", "worker").lower()
 
-        def _run_worker():
-            worker_path = Path(__file__).resolve().parent / "tool_worker.py"
-            try:
-                proc = subprocess.run(
-                    [sys.executable, str(worker_path), str(tool_file), entry["function_name"]],
-                    input=(input_data or "").encode("utf-8"),
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    timeout=int(os.getenv("TOOL_EXECUTION_TIMEOUT", "10")),
-                )
+        sandbox = DockerSandbox()
+        # Will raise RuntimeError if Docker is unavailable
+        ok, out = sandbox.run_tool(
+            tool_file=tool_file,
+            func_name=entry["function_name"],
+            input_data=input_data,
+        )
 
-                if proc.returncode != 0:
-                    err = proc.stderr.decode("utf-8", errors="replace")
-                    logger.error(f"ToolCreator: worker error for '{tool_id}': {err}")
-                    return False, f"Error running tool '{tool_id}': {err.strip()}"
-
-                return True, proc.stdout.decode("utf-8", errors="replace")
-
-            except subprocess.TimeoutExpired:
-                logger.error(f"ToolCreator: tool '{tool_id}' timed out (worker)")
-                return False, f"Error running tool '{tool_id}': timeout"
-            except Exception as e:
-                logger.error(f"ToolCreator: unexpected error executing '{tool_id}' (worker): {e}")
-                return False, f"Error running tool '{tool_id}': {e}"
-
-        def _run_docker():
-            # Ensure docker is available
-            docker_bin = shutil.which("docker")
-            if not docker_bin:
-                return False, "docker not available on PATH"
-
-            # Prepare container constraints
-            mem = os.getenv("TOOL_DOCKER_MEMORY", "128m")
-            cpus = os.getenv("TOOL_DOCKER_CPUS", "0.5")
-            pids = os.getenv("TOOL_DOCKER_PIDS", "64")
-            timeout_sec = int(os.getenv("TOOL_EXECUTION_TIMEOUT", "10"))
-
-            tools_dir = str(tool_file.parent.resolve())
-            tool_name = tool_file.name
-            func = entry["function_name"]
-
-            # Build docker command
-            cmd = [
-                docker_bin,
-                "run",
-                "--rm",
-                "--network",
-                "none",
-                "--memory",
-                mem,
-                "--pids-limit",
-                pids,
-                "--cpus",
-                cpus,
-                "-v",
-                f"{tools_dir}:/tools:ro",
-                "-w",
-                "/tools",
-                "python:3.11-slim",
-                "python",
-                tool_name,
-                func,
-            ]
-
-            try:
-                proc = subprocess.run(
-                    cmd,
-                    input=(input_data or "").encode("utf-8"),
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    timeout=timeout_sec,
-                )
-
-                if proc.returncode != 0:
-                    err = proc.stderr.decode("utf-8", errors="replace")
-                    logger.error(f"ToolCreator: docker worker error for '{tool_id}': {err}")
-                    return False, f"Error running tool '{tool_id}' in docker: {err.strip()}"
-
-                return True, proc.stdout.decode("utf-8", errors="replace")
-
-            except subprocess.TimeoutExpired:
-                logger.error(f"ToolCreator: tool '{tool_id}' timed out (docker)")
-                return False, f"Error running tool '{tool_id}': timeout"
-            except Exception as e:
-                logger.error(f"ToolCreator: unexpected error executing '{tool_id}' (docker): {e}")
-                return False, f"Error running tool '{tool_id}': {e}"
-
-        # Execute according to chosen mode
-        if exec_mode == "docker":
-            ok, out = _run_docker()
-            if not ok:
-                # Fallback to worker if docker unavailable or failed
-                logger.info(f"ToolCreator: docker execution failed for '{tool_id}', falling back to worker: {out}")
-                ok, out = _run_worker()
-        else:
-            ok, out = _run_worker()
-
-        # Increment call count when execution succeeded
         if ok:
             registry[tool_id]["call_count"] += 1
             self._save_registry(registry)

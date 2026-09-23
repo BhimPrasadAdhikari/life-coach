@@ -1,20 +1,15 @@
 """
 Agent Spawner — lets Marcus create persistent specialist sub-agents.
 Each agent is a focused LLM chain with its own system prompt and identity,
-stored in data/agents.json and invokable by name.
+stored in PostgreSQL (agents_registry) with row-level locking.
 """
-import os
-import json
+import threading
 import logging
-from pathlib import Path
 from datetime import datetime
-from utils.file_lock import read_json_atomic, write_json_atomic
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
-_BASE = Path(__file__).resolve().parent.parent.parent
-AGENTS_FILE = _BASE / "data" / "agents.json"
-AGENTS_PENDING_FILE = _BASE / "data" / "agents_pending.json"
+from core.db import init_db, get_db_session, AgentModel
 
 logger = logging.getLogger(__name__)
 
@@ -22,22 +17,24 @@ logger = logging.getLogger(__name__)
 class AgentSpawner:
     """
     Creates and manages specialist sub-agents that Marcus can delegate to.
-    Agents persist and can be invoked across sessions.
+    Agents persist in PostgreSQL (agents_registry) with row-level locking.
+    Thread-safe singleton.
     """
+    _instance = None
+    _lock = threading.Lock()
+
+    def __new__(cls, *args, **kwargs):
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = super().__new__(cls)
+                cls._instance._initialized = False
+            return cls._instance
 
     def __init__(self):
-        AGENTS_FILE.parent.mkdir(parents=True, exist_ok=True)
-
-    # ------------------------------------------------------------------
-    # Persistence helpers
-    # ------------------------------------------------------------------
-
-    def _load(self) -> dict:
-        data = read_json_atomic(str(AGENTS_FILE))
-        return data or {}
-
-    def _save(self, agents: dict) -> None:
-        write_json_atomic(str(AGENTS_FILE), agents)
+        if getattr(self, "_initialized", False):
+            return
+        init_db()
+        self._initialized = True
 
     # ------------------------------------------------------------------
     # Spawn
@@ -51,14 +48,13 @@ class AgentSpawner:
         use_cases: list,
     ) -> dict:
         """
-        Use an LLM to write the agent's system prompt, then persist the agent.
+        Use an LLM to write the agent's system prompt, then persist the pending agent to PostgreSQL.
         Returns the stored agent dict.
         """
         from core.prompts import AGENT_SPAWN_PROMPT
         from graph.utils.llm import make_llm
-        from core.config import DEFAULT_MODEL_KEY
+        from core.config import DEFAULT_MODEL_KEY, DEFAULT_TEMPERATURE
 
-        from core.config import DEFAULT_TEMPERATURE
         llm = make_llm(DEFAULT_MODEL_KEY, temperature=DEFAULT_TEMPERATURE)
 
         spawn_prompt = AGENT_SPAWN_PROMPT.format(
@@ -71,54 +67,64 @@ class AgentSpawner:
         response = await llm.ainvoke(spawn_prompt)
         system_prompt = response.content.strip()
 
-        # Persist as a pending agent for human approval
-        pending = self._load_pending()
         agent_id = name.lower().replace(" ", "_").replace("-", "_")
+        now_str = datetime.now().isoformat()
 
-        agent = {
-            "id": agent_id,
-            "name": name,
-            "purpose": purpose,
-            "coaching_context": coaching_context,
-            "use_cases": use_cases,
-            "system_prompt": system_prompt,
-            "created_at": datetime.now().isoformat(),
-            "invocation_count": 0,
-            "status": "pending",
-        }
-        pending[agent_id] = agent
-        self._save_pending(pending)
+        with get_db_session() as session:
+            existing = session.query(AgentModel).filter(AgentModel.id == agent_id).with_for_update().first()
+            if existing:
+                existing.name = name
+                existing.purpose = purpose
+                existing.coaching_context = coaching_context
+                existing.use_cases = use_cases
+                existing.system_prompt = system_prompt
+                existing.status = "pending"
+                agent_obj = existing
+            else:
+                agent_obj = AgentModel(
+                    id=agent_id,
+                    name=name,
+                    purpose=purpose,
+                    coaching_context=coaching_context,
+                    use_cases=use_cases,
+                    system_prompt=system_prompt,
+                    created_at=now_str,
+                    invocation_count=0,
+                    status="pending",
+                )
+                session.add(agent_obj)
+            session.flush()
+            result = agent_obj.to_dict()
 
         logger.info(f"AgentSpawner: spawned pending agent '{name}' (id={agent_id})")
-        return agent
+        return result
 
     # ------------------------------------------------------------------
-    # Pending helpers
+    # Pending & Approval
     # ------------------------------------------------------------------
-    def _load_pending(self) -> dict:
-        data = read_json_atomic(str(AGENTS_PENDING_FILE))
-        return data or {}
-
-    def _save_pending(self, pending: dict) -> None:
-        write_json_atomic(str(AGENTS_PENDING_FILE), pending)
 
     def list_pending_agents(self) -> list:
-        return list(self._load_pending().values())
+        with get_db_session() as session:
+            records = session.query(AgentModel).filter(AgentModel.status == "pending").all()
+            return [r.to_dict() for r in records]
 
     def approve_agent(self, agent_id: str) -> dict:
-        pending = self._load_pending()
-        if agent_id not in pending:
-            raise KeyError(f"Pending agent '{agent_id}' not found")
+        with get_db_session() as session:
+            agent_obj = (
+                session.query(AgentModel)
+                .filter(AgentModel.id == agent_id, AgentModel.status == "pending")
+                .with_for_update()
+                .first()
+            )
+            if not agent_obj:
+                raise KeyError(f"Pending agent '{agent_id}' not found")
 
-        agent = pending.pop(agent_id)
-        # Move to main agents file
-        agents = self._load()
-        agent.pop("status", None)
-        agents[agent_id] = agent
-        self._save(agents)
-        self._save_pending(pending)
+            agent_obj.status = "active"
+            session.flush()
+            result = agent_obj.to_dict()
+
         logger.info(f"AgentSpawner: approved agent '{agent_id}'")
-        return agent
+        return result
 
     # ------------------------------------------------------------------
     # Invoke
@@ -131,11 +137,15 @@ class AgentSpawner:
         context: str = "",
     ) -> str:
         """Run a specialist agent on a given input, with optional session context."""
-        agents = self._load()
-        if agent_id not in agents:
-            return f"Agent '{agent_id}' not found."
-
-        agent = agents[agent_id]
+        with get_db_session() as session:
+            agent_obj = (
+                session.query(AgentModel)
+                .filter(AgentModel.id == agent_id, AgentModel.status == "active")
+                .first()
+            )
+            if not agent_obj:
+                return f"Agent '{agent_id}' not found."
+            agent = agent_obj.to_dict()
 
         from graph.utils.llm import make_llm
         from core.config import DEFAULT_MODEL_KEY, DEFAULT_TEMPERATURE
@@ -156,9 +166,10 @@ class AgentSpawner:
 
         response = await llm.ainvoke(messages)
 
-        # Track invocation count
-        agents[agent_id]["invocation_count"] += 1
-        self._save(agents)
+        with get_db_session() as session:
+            agent_obj = session.query(AgentModel).filter(AgentModel.id == agent_id).with_for_update().first()
+            if agent_obj:
+                agent_obj.invocation_count = (agent_obj.invocation_count or 0) + 1
 
         return response.content
 
@@ -167,7 +178,9 @@ class AgentSpawner:
     # ------------------------------------------------------------------
 
     def list_agents(self) -> list:
-        return list(self._load().values())
+        with get_db_session() as session:
+            records = session.query(AgentModel).filter(AgentModel.status == "active").all()
+            return [r.to_dict() for r in records]
 
     def get_agent_summary(self) -> str:
         agents = self.list_agents()

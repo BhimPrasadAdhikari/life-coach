@@ -108,6 +108,13 @@ class SpeechToText:
         except Exception as e:
             raise SpeechToTextError(f"Failed to transcribe audio: {str(e)}") from e
 
+_stt_instance: Optional[SpeechToText] = None
 
+def get_speech_to_text_module() -> SpeechToText:
+    """Returns a singleton instance of the SpeechToText class."""
+    global _stt_instance
+    if _stt_instance is None:
+        _stt_instance = SpeechToText()
+    return _stt_instance
 
     

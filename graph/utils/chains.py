@@ -1,7 +1,7 @@
 from __future__ import annotations
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnableConfig
-from .llm import get_chat_model_from_config, make_llm
+from .llm import get_chat_model_from_config, make_llm, with_resilience
 from core.config import EVOLVE_CHECK_MODEL_KEY
 from core.prompts import SYSTEM_PROMPT, ROUTER_PROMPT
 from pydantic import BaseModel, Field
@@ -16,7 +16,12 @@ class RouterResponse(BaseModel):
 
 def get_router_chain(config: RunnableConfig | None = None):
     """Router uses a fast, cheap model regardless of user preference."""
-    model = make_llm(EVOLVE_CHECK_MODEL_KEY, temperature=0.3).with_structured_output(RouterResponse)
+    model = make_llm(EVOLVE_CHECK_MODEL_KEY, temperature=0.3)
+    model = with_resilience(
+        model.with_structured_output(RouterResponse),
+        EVOLVE_CHECK_MODEL_KEY,
+        temperature=0.3,
+    )
     prompt = ChatPromptTemplate.from_messages(
         [
             ("system", ROUTER_PROMPT),
@@ -34,9 +39,14 @@ def get_character_response_chain(
 ):
     """
     Build Marcus's main response chain using the user-selected model.
-    Falls back through Groq -> Gemini on rate-limit automatically.
+    Falls back on rate-limit automatically.
     """
-    model = get_chat_model_from_config(config, temperature=0.7, with_fallback=True)
+    model = get_chat_model_from_config(
+        config,
+        temperature=0.7,
+        with_fallback=True
+    )
+    
     system_message = SYSTEM_PROMPT
 
     if active_skills:
@@ -53,7 +63,17 @@ def get_character_response_chain(
         )
 
     if summary:
-        system_message += f"\n\nSummary of the conversation so far: {summary}"
+        system_message += f"\n\n ## CONVERSATION SUMMARY: {summary}"
+    
+    system_message += (
+        "\n\n---\n"
+        "## LONG-TERM MEMORY\n"
+        "{memory_context}\n\n"
+        "use these memories when they are relevant. "
+        "Do not ask the user for information that is already clearly"
+        "present in memory. Ignore any memory that conflicts with the"
+        "current conversation"
+    )
 
     prompt = ChatPromptTemplate.from_messages(
         [

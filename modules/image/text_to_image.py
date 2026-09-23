@@ -1,13 +1,24 @@
-import os
+from __future__ import annotations
+
+import asyncio
+import io
 import logging
+import os
+from pathlib import Path
 from typing import Optional
-from langchain_core.prompts import ChatPromptTemplate
+
 from huggingface_hub import InferenceClient
-from graph.utils.llm import get_chat_model
-from core.exceptions import TextToImageError
+from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
-from core.prompts import IMAGE_SCENARIO_PROMPT, IMAGE_ENHANCEMENT_PROMPT
+from core.exceptions import TextToImageError
+
+from graph.utils.llm import get_chat_model
+
+from core.prompts import (
+    IMAGE_SCENARIO_PROMPT,
+    IMAGE_ENHANCEMENT_PROMPT,
+)
 
 class ScenarioPrompt(BaseModel):
     """Class for the scenario prompt"""
@@ -30,11 +41,14 @@ class TextToImage:
         self._client: Optional[InferenceClient] = None
         self.logger = logging.getLogger(__name__)
 
-    async def create_scenario(self, chat_history: list = None) -> ScenarioPrompt:
+    async def create_scenario(self, chat_history: list | None = None) -> ScenarioPrompt:
         """Creates a first-person narrative scenario prompt and corresponding image prompt from the chat history."""
 
         try:
-            formatted_history = "\n".join([f"{msg.type.title()}: {msg.content}" for msg in chat_history[-5:]])
+            history = chat_history or []
+
+            formatted_history = "\n".join([f"{msg.type.title()}: {msg.content}" for msg in history[-5:]])
+            
             self.logger.info(f"Creating Scenario form chat history: {formatted_history}")
 
             llm = get_chat_model(temperature=0.4).with_structured_output(ScenarioPrompt)
@@ -96,32 +110,52 @@ class TextToImage:
         try:
             # Generate image using Hugging Face Inference API
             self.logger.info(f"Generating image for prompt: {prompt}")
-            image = self.client.text_to_image(
+            image = await asyncio.to_thread(
+                self.client.text_to_image,
                 prompt=prompt,
                 model=self.MODEL_ID,
             )
-            
-            # Convert PIL Image to bytes
-            import io
-            buffer = io.BytesIO()
-            image.save(buffer, format="PNG")
-            image_bytes = buffer.getvalue()
-            
+
+            image_bytes = await asyncio.to_thread(
+                self._serialize_and_save_image,
+                image,
+                output_path,
+            )
+                        
             if not image_bytes:
                 raise TextToImageError("Generated image is empty")
                 
-            if output_path:
-                os.makedirs(os.path.dirname(output_path), exist_ok=True)
-                image.save(output_path)
-            
             return image_bytes
+        except TextToImageError:
+            raise
             
         except Exception as e:
             raise TextToImageError(f"Failed to generate image: {str(e)}") from e
 
+    @staticmethod
+    def _serialize_and_save_image(
+        image,
+        output_path: str,
+    ) -> bytes:
+        buffer = io.BytesIO()
+        image.save(buffer, format="PNG")
+        image_bytes = buffer.getvalue()
+
+        if output_path:
+            path = Path(output_path)
+            image.save(path, format="PNG")
+        
+        return image_bytes
+
+_text_to_image: Optional[TextToImage] = None
 
 def get_text_to_image_module() -> TextToImage:
-    """Factory function to get TextToImage instance."""
-    return TextToImage()
+    """return the process-wide text-to-image service."""
+    global _text_to_image
+
+    if _text_to_image is None:
+        _text_to_image = TextToImage()
+    
+    return _text_to_image
 
 
