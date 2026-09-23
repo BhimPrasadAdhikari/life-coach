@@ -6,6 +6,11 @@
 
 ---
 
+Chat with it. Go to the website https://life-coach-production-02f3.up.railway.app/. 
+Login credentials: 
+**username**: user 
+**password**: password
+
 ## Hi, I'm Bhim Prasad Adhikari
 
 I'm a **2nd year undergraduate student** pursuing **AI & Machine Learning**, and I built this project to showcase my passion for building end-to-end AI systems.
@@ -224,6 +229,14 @@ QDRANT_API_KEY=your_qdrant_api_key
 ```bash
 python scripts/run_chainlit.py run interfaces/chainlit/app.py --host 127.0.0.1 --port 8001 --headless
 ```
+
+---
+
+## Contributing
+
+Contributions are welcome, but the project follows strict contribution and quality rules.
+
+Please read **[CONTRIBUTING.md](CONTRIBUTING.md)** before opening an issue or pull request.
 
 ---
 
